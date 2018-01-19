@@ -91,7 +91,6 @@ class ComplexDemo extends Component {
         <div ref="example" className="drop-example">
           <div className="drop-scroll-content">
             <TetherComponent
-              renderElementTo="#tool-tip-container"
               ref="tethered-component"
               attachment={`${vertical} ${horizontal}`}
               constraints={[{
@@ -144,7 +143,6 @@ class ComplexDemo extends Component {
                 }
               </Transition>
             </TetherComponent>
-            <div id="tool-tip-container"></div>
           </div>
         </div>
       </div>
@@ -163,4 +161,4 @@ class App extends Component {
   }
 }
 
-ReactDOM.render(<App />, document.getElementById('app'))
+ReactDOM.render(<App />, document.getElementById('app'));

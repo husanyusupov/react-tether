@@ -1,6 +1,6 @@
-import React, { Component, Children, Fragment } from 'react'
+import React, { Component, Children } from 'react'
 import PropTypes from 'prop-types'
-import ReactDOM, { createPortal } from 'react-dom'
+import ReactDOM from 'react-dom'
 import Tether from 'tether'
 
 if (!Tether) {
@@ -12,16 +12,16 @@ const renderElementToPropTypes = [
   PropTypes.shape({
     appendChild: PropTypes.func.isRequired
   })
-];
+]
 
 const childrenPropType = ({ children }, propName, componentName) => {
-  const childCount = Children.count(children);
+  const childCount = Children.count(children)
   if (childCount <= 0) {
     return new Error(`${componentName} expects at least one child to use as the target element.`)
   } else if (childCount > 2) {
     return new Error(`Only a max of two children allowed in ${componentName}.`)
   }
-};
+}
 
 const attachmentPositions = [
   'auto auto',
@@ -34,11 +34,12 @@ const attachmentPositions = [
   'bottom left',
   'bottom center',
   'bottom right'
-];
+]
 
 class TetherComponent extends Component {
   static propTypes = {
     renderElementTag: PropTypes.string,
+    renderElementTo: PropTypes.oneOfType(renderElementToPropTypes),
     attachment: PropTypes.oneOf(attachmentPositions).isRequired,
     targetAttachment: PropTypes.oneOf(attachmentPositions),
     offset: PropTypes.string,
@@ -55,23 +56,24 @@ class TetherComponent extends Component {
     onUpdate: PropTypes.func,
     onRepositioned: PropTypes.func,
     children: childrenPropType
-  };
+  }
 
   static defaultProps = {
-    renderElementTag: 'div'
-  };
+    renderElementTag: 'div',
+    renderElementTo: null
+  }
 
-  _targetNode = null;
-  _popupParentNode = null;
-  _tether = false;
+  _targetNode = null
+  _elementParentNode = null
+  _tether = false
 
   componentDidMount() {
-    this._targetNode = ReactDOM.findDOMNode(this);
+    this._targetNode = ReactDOM.findDOMNode(this)
     this._update()
   }
 
   componentDidUpdate(prevProps) {
-    this._targetNode = ReactDOM.findDOMNode(this);
+    this._targetNode = ReactDOM.findDOMNode(this)
     this._update()
   }
 
@@ -110,56 +112,93 @@ class TetherComponent extends Component {
   _registerEventListeners() {
     this.on('update', () => {
       return this.props.onUpdate && this.props.onUpdate.apply(this, arguments)
-    });
+    })
 
     this.on('repositioned', () => {
       return this.props.onRepositioned && this.props.onRepositioned.apply(this, arguments)
     })
   }
 
+  get _renderNode() {
+    const { renderElementTo } = this.props
+    if (typeof renderElementTo === 'string') {
+      return document.querySelector(renderElementTo)
+    } else {
+      return renderElementTo || document.body
+    }
+  }
+
   _destroy() {
-    if (this._popupParentNode) {
-      this._popupParentNode.parentNode.removeChild(this._popupParentNode)
+    if (this._elementParentNode) {
+      ReactDOM.unmountComponentAtNode(this._elementParentNode)
+      this._elementParentNode.parentNode.removeChild(this._elementParentNode)
     }
 
     if (this._tether) {
       this._tether.destroy()
     }
 
-    this._popupParentNode = null;
-    this._tether = null;
+    this._elementParentNode = null
+    this._tether = null
   }
 
   _update() {
-    if (this._popupParentNode) {
-      this._updateTether()
+    const { children, renderElementTag } = this.props
+    const elementComponent = Children.toArray(children)[1]
+
+    // if no element component provided, bail out
+    if (!elementComponent) {
+      // destroy Tether element if it has been created
+      if (this._tether) {
+        this._destroy()
+      }
+      return
     }
+
+    // create element node container if it hasn't been yet
+    if (!this._elementParentNode) {
+      // create a node that we can stick our content Component in
+      this._elementParentNode = document.createElement(renderElementTag)
+
+      // append node to the render node
+      this._renderNode.appendChild(this._elementParentNode)
+    }
+
+    // render element component into the DOM
+    ReactDOM.unstable_renderSubtreeIntoContainer(
+      this, elementComponent, this._elementParentNode, () => {
+        // if we're not destroyed, update Tether once the subtree has finished rendering
+        if (this._elementParentNode) {
+          this._updateTether()
+        }
+      }
+    )
   }
 
   _updateTether() {
-    const { id, className, style, ...options } = this.props;
+    const { children, renderElementTag, renderElementTo, id, className, style, ...options } = this.props
     const tetherOptions = {
       target: this._targetNode,
-      element: this._popupParentNode,
+      element: this._elementParentNode,
       ...options
-    };
+    }
 
     if (id) {
-      this._popupParentNode.id = id
+      this._elementParentNode.id = id
     }
 
     if (className) {
-      this._popupParentNode.className = className
+      this._elementParentNode.className = className
     }
 
     if (style) {
       Object.keys(style).forEach(key => {
-        this._popupParentNode.style[key] = style[key]
+        this._elementParentNode.style[key] = style[key]
       })
     }
 
     if (!this._tether) {
-      this._tether = new Tether(tetherOptions);
+      this._tether = new Tether(tetherOptions)
       this._registerEventListeners()
     } else {
       this._tether.setOptions(tetherOptions)
@@ -169,29 +208,8 @@ class TetherComponent extends Component {
   }
 
   render() {
-    const { renderElementTag, children } = this.props;
-    const childrenArray = Children.toArray(children);
-    const target = childrenArray[0];
-    const popup = childrenArray[1];
-
-    if (!popup) {
-      if (this._tether) {
-        this._destroy()
-      }
-    } else {
-      if (!this._popupParentNode) {
-        this._popupParentNode = document.createElement(renderElementTag);
-        document.body.appendChild(this._popupParentNode);
-      }
-    }
-    
-    const renderPopup = popup && this._popupParentNode && document.body.contains(this._popupParentNode);
-    
-    return <Fragment>
-      {target}
-      {renderPopup && createPortal(popup, this._popupParentNode)}
-    </Fragment>
+    return Children.toArray(this.props.children)[0]
   }
 }
 
-export default TetherComponent;
+export default TetherComponent

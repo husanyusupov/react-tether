@@ -69,10 +69,6 @@ The first child is used as the Tether's `target` and the second child (which is 
 
 The tag that is used to render the Tether element, defaults to `div`.
 
-#### `renderElementTo`: PropTypes.string
-
-Where in the DOM the Tether element is appended. Passes in any valid selector to `document.querySelector`. Defaults to `document.body`.
-
 #### `Tether Options`:
 
 Any valid [Tether options](http://tether.io/#options).

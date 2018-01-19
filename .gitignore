@@ -9,7 +9,7 @@
 node_modules
 npm-debug.log
 /dist/
-/lib/
+/lib/TetherComponentOld.js
 /example/bundle.js
 
 # General Files
